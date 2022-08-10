@@ -11,191 +11,29 @@ import math as m
 from typing import List, Dict
 
 def showaxes():
-    v = cmd.get_view()
-    obj = [
-        cgo.BEGIN, cgo.LINES,
-        cgo.COLOR, 1.0, 0.0, 0.0,
-        cgo.VERTEX,   0.0, 0.0, 0.0,
-        cgo.VERTEX,  5.0, 0.0, 0.0,
-        cgo.COLOR, 0.0, 1.0, 0.0,
-        cgo.VERTEX, 0.0,   0.0, 0.0,
-        cgo.VERTEX, 0.0,  5.0, 0.0,
-        cgo.COLOR, 0.0, 0.0, 1.0,
-        cgo.VERTEX, 0.0, 0.0,   0.0,
-        cgo.VERTEX, 0.0, 0.0,   5.0,
-        cgo.END
-    ]
-    cmd.load_cgo(obj, 'axes')
-    cmd.set_view(v)
+    """showaxes is a function that loads XYZ global axes as CGO objects into PyMol viewport
+    """    
+    w = 0.06 # cylinder width 
+    l = 0.75 # cylinder length
+    h = 0.25 # cone hight
+    d = w * 1.618 # cone base diameter
 
-def unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
+    obj = [CYLINDER, 0.0, 0.0, 0.0,   l, 0.0, 0.0, w, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+        CYLINDER, 0.0, 0.0, 0.0, 0.0,   l, 0.0, w, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+        CYLINDER, 0.0, 0.0, 0.0, 0.0, 0.0,   l, w, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+        CONE,   l, 0.0, 0.0, h+l, 0.0, 0.0, d, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 
+        CONE, 0.0,   l, 0.0, 0.0, h+l, 0.0, d, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 
+        CONE, 0.0, 0.0,   l, 0.0, 0.0, h+l, d, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0]
+    cmd.load_cgo(obj, 'global_axes')
+
+def unit_vector(vector: np.array) -> np.array:
+    """unit_vector generates a unit vector given any numpy array
+
+    :return: normalised vector
+    """ 
     return vector / np.linalg.norm(vector)
 
-def angle_between(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'::
-
-            >>> angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
-            >>> angle_between((1, 0, 0), (1, 0, 0))
-            0.0
-            >>> angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
-    """
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    return math.degrees(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
-
-def skew(x):
-    return np.array([[0, -x[2], x[1]],
-                     [x[2], 0, -x[0]],
-                     [-x[1], x[0], 0]])
-                     
-def rotate_test(selection, coords):
-    a = unit_vector([1.0,0.0,0.0])
-    selection_coords = list(cmd.get_model(selection).get_coord_list())
-    b = unit_vector(np.subtract(selection_coords[-1],selection_coords[0]))
-    v = np.cross(a,b)
-    s = np.linalg.norm(v)
-    c = np.dot(a,b)
-    v_x = skew(v)
-    I = np.identity(3)
-    R = I + v_x + (np.dot(v_x,v_x)) * ((1-c)/(s**2))
-    test = np.dot(R,a)
-    new_coords = []
-    for coord in coords:
-        new_coords.append(np.dot(R,coord))
-    return new_coords
-
-
-def euler_to_quaternion(phi, theta, psi):
- 
-        qw = m.cos(phi/2) * m.cos(theta/2) * m.cos(psi/2) + m.sin(phi/2) * m.sin(theta/2) * m.sin(psi/2)
-        qx = m.sin(phi/2) * m.cos(theta/2) * m.cos(psi/2) - m.cos(phi/2) * m.sin(theta/2) * m.sin(psi/2)
-        qy = m.cos(phi/2) * m.sin(theta/2) * m.cos(psi/2) + m.sin(phi/2) * m.cos(theta/2) * m.sin(psi/2)
-        qz = m.cos(phi/2) * m.cos(theta/2) * m.sin(psi/2) - m.sin(phi/2) * m.sin(theta/2) * m.cos(psi/2)
- 
-        return [qw, qx, qy, qz]
-
-def qv_mult(q1, v1):
-    q2 = (0.0,) + v1
-    return q_mult(q_mult(q1, q2), q_conjugate(q1))[1:]
-
-def q_conjugate(q):
-    w, x, y, z = q
-    return (w, -x, -y, -z)
-
-def q_mult(q1, q2):
-    w1, x1, y1, z1 = q1
-    w2, x2, y2, z2 = q2
-    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
-    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
-    y = w1 * y2 + y1 * w2 + z1 * x2 - x1 * z2
-    z = w1 * z2 + z1 * w2 + x1 * y2 - y1 * x2
-    return w, x, y, z
-
-def Rx(theta):
-  return np.array([[ 1, 0           , 0           ],
-                   [ 0, np.cos(theta),-np.sin(theta)],
-                   [ 0, np.sin(theta), np.cos(theta)]])
-def Rz(theta):
-  return np.array([[ np.cos(theta), -np.sin(theta), 0 ],
-                   [ np.sin(theta), np.cos(theta) , 0 ],
-                   [ 0           , 0            , 1 ]])
-def Ry(theta):
-  return np.array([[ np.cos(theta), 0, np.sin(theta)],
-                   [ 0           , 1, 0           ],
-                   [-np.sin(theta), 0, np.cos(theta)]])
-
-def c_matrix(local_frame):
-    selection_coords = [list(cmd.get_model(l).get_coord_list())[0] for l in local_frame]
-    ref_atom = np.array(selection_coords[0])
-    x_axis_atom = np.array(selection_coords[1])
-    xy_plane_atom = np.array(selection_coords[2])
-
-    # c_matrix = np.empty((3,3))
-
-    # row1 = (x_axis_atom - ref_atom) / np.linalg.norm(x_axis_atom - ref_atom)
-    x_axis = x_axis_atom - ref_atom
-    xy_plane = xy_plane_atom - ref_atom
-    
-    sigma_fflux = -np.dot(x_axis, xy_plane) / np.dot(x_axis, x_axis)
-    y_vec = sigma_fflux * x_axis + xy_plane
-    # z_axis = np.cross(x_axis,y_vec)
-    # #row2 = y_vec / np.linalg.norm(y_vec)
-    # row2 = (y_vec) / np.sqrt(np.dot(y_vec,y_vec))
-    # row3 = np.cross(row1,row2)
-    # c_matrix[0, :] = row1
-    # c_matrix[1, :] = row2
-    # c_matrix[2, :] = row3
-    # print(np.linalg.det(c_matrix))
-
-
-
-    # r12 = x_axis_atom - ref_atom
-    # r13 = xy_plane_atom - ref_atom
-
-    # mod_r12 = np.linalg.norm(r12)
-
-    # r12 /= mod_r12
-
-    # ex = r12
-    # s = sum(ex * r13)
-    # ey = r13 - s * ex
-
-    # ey /= np.sqrt(sum(ey * ey))
-    # ez = np.cross(ex, ey)
-
-    # c_matrix = np.array([ex, ey, ez])
-    # print(np.linalg.det(c_matrix))
-
-    #Rotating global Vx onto local Vx
-    bx = unit_vector(x_axis_atom - ref_atom)
-    by = unit_vector(y_vec)
-    bz = np.cross(bx,by)
-    # # bz = np.cross(unit_vector(xy_plane_atom - ref_atom), unit_vector(x_axis_atom - ref_atom))
-    # # by = np.cross(bz,unit_vector(x_axis_atom - ref_atom))
-    phi, theta, psi = get_angles(bx,by,bz)
-    print(phi,theta,psi)
-    # # c_matrix = euler_to_quaternion(phi,theta,psi)
-    # cy = np.matmul(Rz(psi),by)
-    # cz = np.matmul(Ry(theta),np.matmul(Rz(psi),bz))
-    # new_theta = get_angles(bx, cy, bz)[1]
-    # print(new_theta)
-    # new_phi = get_angles(bx,bx,cz)[2]
-    # print(new_phi)
-
-    c_matrix = euler_to_quaternion(phi,theta,psi)
-
-    # c_matrix = np.matmul(Rz(psi),Ry(new_theta),Rz(new_phi))
-
-    
-    #Rotating global Vy onto local Vy
-    
-    # if bz[-1] < 0:
-    #     theta = np.arccos(np.dot(bz, az)) + np.pi/2
-    # else:
-    #     theta = np.arccos(np.dot(bz, az)) 
-    # R2 = np.array(
-    #     [
-    #         [1, 0, 0],
-    #         [0, np.cos(theta), -np.sin(theta)],
-    #         [0, np.sin(theta), np.cos(theta)],
-    #     ]
-    # )
-    # print(np.linalg.det(R2))
-    # c_matrix = np.matmul(R2, R1,R2)
-    # az = unit_vector(np.array([0,0,1]))
-    # bz = unit_vector(np.cross(xy_plane_atom - ref_atom, x_axis_atom - ref_atom))
-    # v2 = np.cross(az,bz)
-    # s2 = np.linalg.norm(v2)
-    # c2 = np.dot(az,bz)
-    # v_z = skew(v2)
-    # R2 = np.eye(3) + v_z + (np.dot(v_z,v_z)) * ((1-c2)/(s2**2))
-    # print(np.linalg.det(R2))
-    return c_matrix
-
-def global_to_local(local_origin, local_axis, global_coordinates):
+def global_to_local(local_origin: np.narray, local_axis: np.ndarray, global_coordinates: np.ndarray) -> np.ndarray:
     """global_to_local converts global coordinates to local coordinate system
 
     :param local_origin: n origin of the local axis system
@@ -205,55 +43,42 @@ def global_to_local(local_origin, local_axis, global_coordinates):
     """ 
     return np.matmul(local_axis.T, (global_coordinates - local_origin).T).T
 
+def global_to_local_frame(local_frame: List[int], global_coordinates: np.ndarray) -> np.ndarray:
+    """global_to_local_frame converts global coordinates to local frame coordinates defined by three atoms
 
-def global_to_local_frame(local_frame, global_coordinates):
+    :param local_frame: local_frame is 
+    :param global_coordinates: _description_
+    :return: _description_
+    """    
     origin_atom = np.array(local_frame[0])
     x_axis_atom = np.array(local_frame[1])
     xy_plane_atom = np.array(local_frame[2])
 
-    bx = unit_vector(x_axis_atom - origin_atom)
-    bz = unit_vector(np.cross(unit_vector(xy_plane_atom - origin_atom), unit_vector(x_axis_atom - origin_atom)))
-    by = unit_vector(np.cross(bz,unit_vector(x_axis_atom - origin_atom)))
+    lx = unit_vector(x_axis_atom - origin_atom)
+    lz = unit_vector(np.cross(unit_vector(xy_plane_atom - origin_atom), unit_vector(x_axis_atom - origin_atom)))
+    ly = unit_vector(np.cross(lz,unit_vector(x_axis_atom - origin_atom)))
 
-    local_axis = np.array([bx, by, bz])
+    local_axis = np.array([lx, ly, lz])
     return global_to_local(np.zeros(3), local_axis, global_coordinates)
 
+def spherical_harmonics(local_frame: List[int], r: float, m: int, l: int, n_points: int, colormap: str):
+    """spherical_harmonics _summary_
 
-def get_angles(local_x,local_y,local_z):
-    global_x = np.array([1, 0, 0])
-    global_y = np.array([0, 1, 0])
-    global_z = np.array([0, 0, 1])
-    # temp = np.empty((3,3))
-    # temp[:, 0] = global_x
-    # temp[:, 1] = local_x
-    # temp[:, 2] = np.cross(global_x,local_x)
-    cosine = np.dot(global_x,local_x)
-    sine = np.linalg.norm(np.cross(global_x,local_x))
-    phi = np.arctan2(sine,cosine)
-    #phi = np.arccos(np.dot(global_x,local_x))
-    
-    # temp = np.empty((3,3))
-    # temp[:, 0] = global_y
-    # temp[:, 1] = local_y
-    # temp[:, 2] = np.cross(global_y,local_y)
-    cosine = np.dot(global_y,local_y)
-    sine = np.linalg.norm(np.cross(global_x,local_x))
-    theta = np.arctan2(sine,cosine)
-    #theta = np.arccos(np.dot(global_y,local_y))
-
-    # temp = np.empty((3,3))
-    # temp[:, 0] = global_z
-    # temp[:, 1] = local_z
-    # temp[:, 2] = np.cross(global_z,local_z)
-    cosine = np.dot(global_z,local_z)
-    sine = np.linalg.norm(np.cross(global_x,local_x))
-    psi = np.arctan2(sine,cosine)
-    #psi = np.arccos(np.dot(global_z,local_z))
-
-    return (phi,theta,psi)
-    
-
-def spherical_harmonics(local_frame,r,m,l, n_points, colormap):
+    :param local_frame: _description_
+    :type local_frame: List[int]
+    :param r: _description_
+    :type r: float
+    :param m: _description_
+    :type m: int
+    :param l: _description_
+    :type l: int
+    :param n_points: _description_
+    :type n_points: int
+    :param colormap: _description_
+    :type colormap: str
+    :return: _description_
+    :rtype: _type_
+    """    
     theta = np.linspace(0, np.pi, n_points)
     phi = np.linspace(0, 2*np.pi, n_points)
     # Create a 2-D meshgrid of (theta, phi) angles.
@@ -273,18 +98,11 @@ def spherical_harmonics(local_frame,r,m,l, n_points, colormap):
     colors = cmap.to_rgba(Y.real)
     list_of_colors = []
     coords = []
-    # C = c_matrix(local_frame)
     for color in colors:
         for c in color:
             list_of_colors.append(c[:3])
-
     coords = np.vstack((Yx.ravel(), Yy.ravel(), Yz.ravel())).T
     coords = global_to_local_frame(local_frame, coords)
-    # new_coords = []
-    # for coord in coords:
-    #     new_coords.append(qv_mult(C,tuple(coord)))
-    # coords = np.matmul(C, coords).T
-
     return coords, list_of_colors
 
 def alf_axes(ref_atom, ax1,ax2,ax3):
@@ -387,10 +205,15 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
                 prev_priorities = priorities
         return atoms[priorities.index(max(priorities))]
 
-    def _get_bonded_atoms(i):
+    def _get_bonded_atoms(i: int) -> List[int]:
+        """_get_bonded_atoms _summary_
+
+        :param i: _description_
+        :return: _description_
+        """        
         return [j for j in range(len(connectivity)) if connectivity[i, j] == 1]
 
-    def _calculate_alf(iatom) -> List["Atom"]:
+    def _calculate_alf(iatom) -> List[int]:
         """Returns a list consisting of the x-axis and xy-plane Atom instances, which
         correspond to the atoms of first and second highest priorty as determined by the
         Cahn-Ingold-Prelog rules."""
