@@ -244,6 +244,8 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
     return [a for a in _calculate_alf(iatom)]
 
 def wrapper(selected_atom, molobj, r, m, l, n_points,cmap = 'viridis', ax=0):
+    if n_points%3 != 0:
+        raise ValueError("Number of points for the meshgrid needs to be a multiple of 3")
     selected_atom_coords = cmd.get_model(selected_atom).get_coord_list()
     if len(selected_atom_coords) != 1:
         raise ValueError("Selection must be only one atom")
