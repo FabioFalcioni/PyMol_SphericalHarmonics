@@ -1,4 +1,5 @@
 from cmath import cos
+from multiprocessing.sharedctypes import Value
 from turtle import position
 from xdrlib import ConversionError
 from pymol import cgo
@@ -33,7 +34,7 @@ def unit_vector(vector: np.array) -> np.array:
     """ 
     return vector / np.linalg.norm(vector)
 
-def global_to_local(local_origin: np.narray, local_axis: np.ndarray, global_coordinates: np.ndarray) -> np.ndarray:
+def global_to_local(local_origin: np.array, local_axis: np.ndarray, global_coordinates: np.ndarray) -> np.ndarray:
     """global_to_local converts global coordinates to local coordinate system
 
     :param local_origin: n origin of the local axis system
@@ -228,6 +229,7 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
         for _ in range(n_atoms_in_alf):
             # make a list of atoms to which the central atom is bonded to that are not in alf
             queue = [a for a in _get_bonded_atoms(iatom) if a not in alf]
+
             # if queue is empty, then we add the bonded atoms of the atoms that the atom of interest is connected to
             if not queue:
                 queue = list(
@@ -237,44 +239,52 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
                 )
                 # again remove atoms if they are already in alf
                 queue = [a for a in queue if a not in alf]
+            if not queue:
+                raise ValueError("Check that the selection is bonded to other atoms in order to find a correct local frame.")
             max_priority_atom = _max_priority(queue)
             alf.append(max_priority_atom)
         return alf
 
     return [a for a in _calculate_alf(iatom)]
 
-def wrapper(selected_atom, molobj, r, m, l, n_points,cmap = 'viridis', ax=0):
-    if n_points%3 != 0:
+def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0):
+    if (int(n_points)%3 != 0):
         raise ValueError("Number of points for the meshgrid needs to be a multiple of 3")
-    selected_atom_coords = cmd.get_model(selected_atom).get_coord_list()
-    if len(selected_atom_coords) != 1:
-        raise ValueError("Selection must be only one atom")
+    # selected_atom_coords = cmd.get_model(selected_atom).get_coord_list()
+    # if len(selected_atom_coords) != 1:
+    #     raise ValueError("Selection must be only one atom")
     if ax:
         showaxes()
+
     bonds = [bond.index for bond in cmd.get_model(molobj).bond]
     natoms = cmd.get_model(molobj).nAtom
     connectivity = np.zeros((natoms, natoms))
     for (iatom, jatom) in bonds:
         connectivity[iatom, jatom] = 1
         connectivity[jatom, iatom] = 1
-
-    selected_atom_index = cmd.index(selected_atom)[0][-1] - 1
+    
     obj_coords = cmd.get_model(molobj).get_coord_list()
     obj_atom_masses = [atom.get_mass() for atom in cmd.get_model(molobj).atom]
 
-    alf = calculate_alf_cahn_ingold_prelog(selected_atom_index, obj_coords, obj_atom_masses, connectivity)
-    local_frame = [obj_coords[i] for i in alf]
-
-    OBJECT_coords, OBJECT_colors = spherical_harmonics(local_frame, float(r),int(m),int(l),
-                                                int(n_points), colormap = cmap)
-    object = create_obj(OBJECT_coords,OBJECT_colors)
-    if ax:
-        showaxes()
-    name = f'atom{selected_atom_index+1}sph_{m}_{l}'
+    #selected_atom_index = cmd.index(selected_atom)[0][-1] - 1
+    selected_atoms_index = [ a[1] - 1 for a in cmd.index(selected_atoms)]
+    selected_atoms_coords = [coord for coord in cmd.get_model(selected_atoms).get_coord_list()]
     v = cmd.get_view()
-    cmd.load_cgo(object, name)
-    ref_atom = selected_atom_coords[0]
-    cmd.translate(object=name, vector = ref_atom, camera=0)
+    for selected_atom_index in selected_atoms_index:
+        alf = calculate_alf_cahn_ingold_prelog(selected_atom_index, obj_coords, obj_atom_masses, connectivity)
+
+        local_frame = [obj_coords[i] for i in alf]
+
+        OBJECT_coords, OBJECT_colors = spherical_harmonics(local_frame, float(r),int(m),int(l),
+                                                    int(n_points), colormap = cmap)
+        object = create_obj(OBJECT_coords,OBJECT_colors)
+        if ax:
+            showaxes()
+        name = f'atom{selected_atom_index+1}sph_{m}_{l}'
+        
+        cmd.load_cgo(object, name)
+        ref_atom = selected_atoms_coords[selected_atoms_index.index(selected_atom_index)]
+        cmd.translate(object=name, vector = ref_atom, camera=0)
     cmd.set_view(v)
    
     
