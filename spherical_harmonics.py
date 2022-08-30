@@ -250,23 +250,17 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
 def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0):
     if (int(n_points)%3 != 0):
         raise ValueError("Number of points for the meshgrid needs to be a multiple of 3")
-    # selected_atom_coords = cmd.get_model(selected_atom).get_coord_list()
-    # if len(selected_atom_coords) != 1:
-    #     raise ValueError("Selection must be only one atom")
     if ax:
         showaxes()
-
+    #Automated search of the ALF
     bonds = [bond.index for bond in cmd.get_model(molobj).bond]
     natoms = cmd.get_model(molobj).nAtom
     connectivity = np.zeros((natoms, natoms))
     for (iatom, jatom) in bonds:
         connectivity[iatom, jatom] = 1
         connectivity[jatom, iatom] = 1
-    
     obj_coords = cmd.get_model(molobj).get_coord_list()
     obj_atom_masses = [atom.get_mass() for atom in cmd.get_model(molobj).atom]
-
-    #selected_atom_index = cmd.index(selected_atom)[0][-1] - 1
     selected_atoms_index = [ a[1] - 1 for a in cmd.index(selected_atoms)]
     selected_atoms_coords = [coord for coord in cmd.get_model(selected_atoms).get_coord_list()]
     v = cmd.get_view()
