@@ -248,6 +248,15 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
     return [a for a in _calculate_alf(iatom)]
 
 def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0):
+    '''
+DESCRIPTION
+
+    Plot a spherical harmonic function onto selected atoms of a specific molecule object.
+
+USAGE
+
+    spherical_harmonics selected_atoms, molobj, r, m, l, n_points [, cmap [, ax ]]
+    '''
     if (int(n_points)%3 != 0):
         raise ValueError("Number of points for the meshgrid needs to be a multiple of 3")
     if ax:
