@@ -1,4 +1,4 @@
-# PyMol_SphericalHarmonics
+# PyMol Spherical Harmonics
 This repository containts the Plugin 'spherical_harmonics.py' for PyMol (tested on version 2.5.0 Open-Source).
 This adds the functionality of plotting spherical harmonics functions on any atom of a molecule loaded in PyMol.
 The functionality is extremely helpful for visualising ***Atomic Orbitals*** or ***Spherical Multipole Moments***.
@@ -15,7 +15,7 @@ A typical PyMol session to run the spherical harmonics plugin will look like thi
 
 ## Variables
 1. **selected_atoms** : PyMol selection of atoms onto which the chosen spherical harmonic function will be plotted.
-2. **molobj**: PyMol molecule object. This can be a sub-selection of your system or your entire system as loaded.
+2. **molobj** : PyMol molecule object. This can be a sub-selection of your system or your entire system as loaded.
 3. **r** : magnitude of the chosen spherical harmonic function.
 4. **m** : order of the spherical harmonic function.
 5. **l** : degree of the spherical harmonic function.
