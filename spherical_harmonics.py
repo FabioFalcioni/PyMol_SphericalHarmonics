@@ -272,8 +272,6 @@ def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0):
         OBJECT_coords, OBJECT_colors = spherical_harmonics(local_frame, float(r),int(m),int(l),
                                                     int(n_points), colormap = cmap)
         object = create_obj(OBJECT_coords,OBJECT_colors)
-        if ax:
-            showaxes()
         name = f'atom{selected_atom_index+1}sph_{m}_{l}'
         
         cmd.load_cgo(object, name)
