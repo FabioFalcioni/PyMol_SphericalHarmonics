@@ -11,7 +11,7 @@ To load the `spherical_harmonics.py` script as a PyMol plugin, please follow thi
 A typical PyMol session to run the spherical harmonics plugin will look like this:
 |![alt text](https://github.com/FabioFalcioni/PyMol_SphericalHarmonics/blob/main/example.png) |
 |:--:|
-| <b>Figure showing an example usage of the spherical_harmonics.py plugin. The image shows a Qzz (i.e. m=2, l=0) component of the Quadrupole of benzene carbons.</b>|
+| <b>Figure showing an example usage of the spherical_harmonics.py plugin. The image shows a Qzz (i.e. m=2, l=0) component of the Quadrupole of benzene carbons. The 'test' molecule is the text.xyz in the ***test*** folder</b>|
 
 ## Variables
 1. **selected_atoms** : PyMol selection of atoms onto which the chosen spherical harmonic function will be plotted.
