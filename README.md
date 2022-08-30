@@ -1,7 +1,7 @@
 # PyMol_SphericalHarmonics
 This repository containts the Plugin 'spherical_harmonics.py' for PyMol (tested on version 2.5.0 Open-Source).
 This adds the functionality of plotting spherical harmonics functions on any atom of a molecule loaded in PyMol.
-![alt text](https://github.com/FabioFalcioni/PyMol_SphericalHarmonics/blob/main/spherical_harmonics.gif?raw=true)
+![alt text](https://github.com/FabioFalcioni/PyMol_SphericalHarmonics/blob/main/spherical_harmonics.gif)
 
 # Usage
 
