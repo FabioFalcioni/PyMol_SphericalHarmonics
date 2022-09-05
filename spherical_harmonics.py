@@ -84,6 +84,14 @@ def spherical_harmonics(local_frame: List[int], r: float, m: int, l: int, n_poin
     phi = np.linspace(0, 2*np.pi, n_points)
     # Create a 2-D meshgrid of (theta, phi) angles.
     theta, phi = np.meshgrid(theta, phi)
+    from scipy.spatial import Delaunay
+    theta_phi = np.vstack((theta.ravel(),phi.ravel())).T
+    tri = Delaunay(theta_phi)
+    new_theta_phi = theta_phi[tri.simplices]
+    test = new_theta_phi.reshape((new_theta_phi.shape[0]*new_theta_phi.shape[1],2))
+    theta = test[:,0]
+    phi = test[:,1]
+
     # Calculate the Cartesian coordinates of each point in the mesh.
     xyz = np.array([ r * np.sin(theta) * np.sin(phi),
                      r * np.sin(theta) * np.cos(phi),
@@ -98,11 +106,14 @@ def spherical_harmonics(local_frame: List[int], r: float, m: int, l: int, n_poin
     cmap.set_clim(-0.5, 0.5)
     colors = cmap.to_rgba(Y.real)
     list_of_colors = []
-    coords = []
-    for color in colors:
-        for c in color:
-            list_of_colors.append(c[:3])
+    # coords = []
+    # for color in colors:
+    #     for c in color:
+    #         list_of_colors.append(list(c[:3]))
+    list_of_colors = colors[:,:3]
+    print(colors.shape)
     coords = np.vstack((Yx.ravel(), Yy.ravel(), Yz.ravel())).T
+    print(coords)
     coords = global_to_local_frame(local_frame, coords)
     return coords, list_of_colors
 
@@ -119,11 +130,12 @@ def alf_axes(ref_atom, ax1,ax2,ax3):
     [alf.append(l) for l in ax3]
     cmd.load_cgo(alf, 'ALF')
 
-def create_obj(coords, colors, define_normals=False):
-    obj = [BEGIN, POINTS]
 
-    for i in range(0, len(coords), 3):
-        tri = np.array([coords[i], coords[i+1], coords[i+2]])
+
+def create_obj(coords, colors, define_normals=False):
+    obj = [BEGIN, TRIANGLES]
+    for i in range(0,len(coords),3):
+        tri = np.array([coords[i],coords[i+1],coords[i+2]])
         v = tri[1] - tri[0]
         w = tri[2] - tri[0]
         normal = unit_vector(np.cross(v, w))
@@ -151,9 +163,45 @@ def create_obj(coords, colors, define_normals=False):
             obj.extend(normal)
         obj.append(VERTEX)
         obj.extend(coords[i+2])
+
     obj.append(END)
 
     return obj
+# def create_obj(coords, colors, define_normals=False):
+#     obj = [BEGIN, POINTS]
+
+#     for i in range(0, len(coords), 3):
+#         tri = np.array([coords[i], coords[i+1], coords[i+2]])
+#         v = tri[1] - tri[0]
+#         w = tri[2] - tri[0]
+#         normal = unit_vector(np.cross(v, w))
+
+#         obj.append(COLOR)
+#         obj.extend(colors[i])
+#         if define_normals:
+#             obj.append(NORMAL)
+#             obj.extend(normal)
+#         obj.append(VERTEX)
+#         obj.extend(coords[i])
+
+#         obj.append(COLOR)
+#         obj.extend(colors[i+1])
+#         if define_normals:
+#             obj.append(NORMAL)
+#             obj.extend(normal)
+#         obj.append(VERTEX)
+#         obj.extend(coords[i+1])
+
+#         obj.append(COLOR)
+#         obj.extend(colors[i+2])
+#         if define_normals:
+#             obj.append(NORMAL)
+#             obj.extend(normal)
+#         obj.append(VERTEX)
+#         obj.extend(coords[i+2])
+#     obj.append(END)
+
+#     return obj
 
 def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_atom_masses: List[float], connectivity: np.ndarray) -> List[int]:
     import itertools as it
@@ -247,7 +295,7 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
 
     return [a for a in _calculate_alf(iatom)]
 
-def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0):
+def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0, define_normals=False):
     '''
 DESCRIPTION
 
@@ -280,7 +328,7 @@ USAGE
 
         OBJECT_coords, OBJECT_colors = spherical_harmonics(local_frame, float(r),int(m),int(l),
                                                     int(n_points), colormap = cmap)
-        object = create_obj(OBJECT_coords,OBJECT_colors)
+        object = create_obj(OBJECT_coords,OBJECT_colors, define_normals)
         name = f'atom{selected_atom_index+1}sph_{m}_{l}'
         
         cmd.load_cgo(object, name)
