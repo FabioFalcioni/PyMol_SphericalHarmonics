@@ -4,7 +4,11 @@ This adds the functionality of plotting spherical harmonics functions on any ato
 The functionality is extremely helpful for visualising ***Atomic Orbitals*** or ***Spherical Multipole Moments***.
 
 ![alt text](https://github.com/FabioFalcioni/PyMol_SphericalHarmonics/blob/main/spherical_harmonics.gif)
-
+# Requirements
+- [PyMol](https://github.com/schrodinger/pymol-open-source)
+- [numpy](https://numpy.org/)
+- [scipy](https://scipy.org/)
+- [matplotlib](https://matplotlib.org/)
 # Usage
 To load the `spherical_harmonics.py` script as a PyMol plugin, please follow this [link](https://pymolwiki.org/index.php/Plugins).
 
