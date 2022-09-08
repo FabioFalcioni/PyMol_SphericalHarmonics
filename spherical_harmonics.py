@@ -10,6 +10,14 @@ import numpy as np
 from scipy.special import sph_harm
 import math as m
 from typing import List, Dict
+from enum import Enum
+
+
+class MeshType(Enum):
+    Triangles = TRIANGLES
+    Points = POINTS
+    Lines = LINES
+
 
 def showaxes():
     """showaxes is a function that loads XYZ global axes as CGO objects into PyMol viewport
@@ -44,6 +52,9 @@ def global_to_local(local_origin: np.array, local_axis: np.ndarray, global_coord
     """ 
     return np.matmul(local_axis.T, (global_coordinates - local_origin).T).T
 
+def tri_normal(p1,p2,p3):
+    return unit_vector(np.cross(p2 - p1,  p3 - p1))
+
 def global_to_local_frame(local_frame: List[int], global_coordinates: np.ndarray) -> np.ndarray:
     """global_to_local_frame converts global coordinates to local frame coordinates defined by three atoms
 
@@ -62,7 +73,20 @@ def global_to_local_frame(local_frame: List[int], global_coordinates: np.ndarray
     local_axis = np.array([lx, ly, lz])
     return global_to_local(np.zeros(3), local_axis, global_coordinates)
 
-def spherical_harmonics(local_frame: List[int], r: float, m: int, l: int, n_points: int, colormap: str):
+def less_first(a, b):
+    return [a,b] if a < b else [b,a]
+    
+def delaunay2edges(tri):
+
+    list_of_edges = []
+
+    for triangle in tri.simplices:
+        for e1, e2 in [[0,1],[1,2],[2,0]]: # for all edges of triangle
+            list_of_edges.append(less_first(triangle[e1],triangle[e2])) # always lesser index first
+
+    return np.array(list_of_edges)
+    
+def spherical_harmonics(local_frame: List[int], r: float, m: int, l: int, n_points: int, colormap: str, mesh_type = MeshType.Triangles):
     """spherical_harmonics _summary_
 
     :param local_frame: _description_
@@ -79,129 +103,98 @@ def spherical_harmonics(local_frame: List[int], r: float, m: int, l: int, n_poin
     :type colormap: str
     :return: _description_
     :rtype: _type_
-    """    
+    """
+
     theta = np.linspace(0, np.pi, n_points)
     phi = np.linspace(0, 2*np.pi, n_points)
     # Create a 2-D meshgrid of (theta, phi) angles.
     theta, phi = np.meshgrid(theta, phi)
-    from scipy.spatial import Delaunay
     theta_phi = np.vstack((theta.ravel(),phi.ravel())).T
-    tri = Delaunay(theta_phi)
-    new_theta_phi = theta_phi[tri.simplices]
-    test = new_theta_phi.reshape((new_theta_phi.shape[0]*new_theta_phi.shape[1],2))
-    theta = test[:,0]
-    phi = test[:,1]
+
+    if mesh_type in [MeshType.Triangles, MeshType.Lines]:
+        from scipy.spatial import Delaunay
+        tri = Delaunay(theta_phi)
+        if mesh_type is MeshType.Triangles:
+            tri_theta_phi = theta_phi[tri.simplices]
+        elif mesh_type is MeshType.Lines:
+            edges = delaunay2edges(tri)
+            print(edges)
+            tri_theta_phi = theta_phi[edges]
+        tri_theta_phi.shape = ((tri_theta_phi.shape[0]*tri_theta_phi.shape[1],2))
+        theta = tri_theta_phi[:,0]
+        phi = tri_theta_phi[:,1]
+    elif mesh_type is MeshType.Points:
+        theta = theta_phi[:,0]
+        phi = theta_phi[:,1]
 
     # Calculate the Cartesian coordinates of each point in the mesh.
     xyz = np.array([ r * np.sin(theta) * np.sin(phi),
                      r * np.sin(theta) * np.cos(phi),
                      r * np.cos(theta)])
+
     Y = sph_harm(abs(m), l, phi, theta)
     if m < 0:
         Y = np.sqrt(2) * (-1)**m * Y.imag
     elif m > 0:
         Y = np.sqrt(2) * (-1)**m * Y.real
+
     Yx, Yy, Yz = np.abs(Y) * xyz
     cmap = plt.cm.ScalarMappable(cmap=plt.get_cmap(colormap))
     cmap.set_clim(-0.5, 0.5)
     colors = cmap.to_rgba(Y.real)
-    list_of_colors = []
-    # coords = []
-    # for color in colors:
-    #     for c in color:
-    #         list_of_colors.append(list(c[:3]))
     list_of_colors = colors[:,:3]
-    print(colors.shape)
+
     coords = np.vstack((Yx.ravel(), Yy.ravel(), Yz.ravel())).T
-    print(coords)
     coords = global_to_local_frame(local_frame, coords)
+
     return coords, list_of_colors
 
-def alf_axes(ref_atom, ax1,ax2,ax3):
-    alf = [BEGIN, LINES]
-    [alf.append(l) for l in [COLOR, 1.0, 0.0, 0.0]]
-    [alf.append(l) for l in ref_atom]
-    [alf.append(l) for l in ax1]
-    [alf.append(l) for l in [COLOR, 0.0, 1.0, 0.0]]
-    [alf.append(l) for l in ref_atom]
-    [alf.append(l) for l in ax2]
-    [alf.append(l) for l in [COLOR, 0.0, 0.0, 1.0]]
-    [alf.append(l) for l in ref_atom]
-    [alf.append(l) for l in ax3]
-    cmd.load_cgo(alf, 'ALF')
+def mag(v):
+    return np.linalg.norm(v)
+
+def angle(v1, v2):
+    return np.arccos(np.dot(v1, v2))/(mag(v1)*mag(v2))
 
 
 
-def create_obj(coords, colors, define_normals=False):
-    obj = [BEGIN, TRIANGLES]
-    for i in range(0,len(coords),3):
-        tri = np.array([coords[i],coords[i+1],coords[i+2]])
-        v = tri[1] - tri[0]
-        w = tri[2] - tri[0]
-        normal = unit_vector(np.cross(v, w))
+def create_obj(coords, colors, mesh_type=MeshType.Triangles):
+    obj = [BEGIN, mesh_type.value]
 
+    define_normals = mesh_type in [MeshType.Triangles, MeshType.Lines]
+
+    if define_normals:
+        normals = []
+
+        if mesh_type is MeshType.Triangles:
+            index_order = [0, 1, 2]
+        elif mesh_type is MeshType.Lines:
+            index_order = [0, 1, 1, 2, 2, 0]
+
+        for i in range(0, len(coords), len(index_order)):
+            p1 = coords[i+index_order.index(0)]
+            p2 = coords[i+index_order.index(1)]
+            p3 = coords[i+index_order.index(2)]
+
+            normal = np.cross(p2 - p1,  p3 - p1)
+
+            a = [angle(p2 - p1, p3 - p1), angle(p3 - p2, p1 - p2), angle(p1 - p3, p2 - p3)]
+
+            for idx in index_order:
+                normals.append(normal*a[idx])
+    
+    for i, coord in enumerate(coords):
         obj.append(COLOR)
         obj.extend(colors[i])
         if define_normals:
             obj.append(NORMAL)
-            obj.extend(normal)
+            obj.extend(normals[i])
         obj.append(VERTEX)
-        obj.extend(coords[i])
-
-        obj.append(COLOR)
-        obj.extend(colors[i+1])
-        if define_normals:
-            obj.append(NORMAL)
-            obj.extend(normal)
-        obj.append(VERTEX)
-        obj.extend(coords[i+1])
-
-        obj.append(COLOR)
-        obj.extend(colors[i+2])
-        if define_normals:
-            obj.append(NORMAL)
-            obj.extend(normal)
-        obj.append(VERTEX)
-        obj.extend(coords[i+2])
+        obj.extend(coord)
 
     obj.append(END)
 
     return obj
-# def create_obj(coords, colors, define_normals=False):
-#     obj = [BEGIN, POINTS]
 
-#     for i in range(0, len(coords), 3):
-#         tri = np.array([coords[i], coords[i+1], coords[i+2]])
-#         v = tri[1] - tri[0]
-#         w = tri[2] - tri[0]
-#         normal = unit_vector(np.cross(v, w))
-
-#         obj.append(COLOR)
-#         obj.extend(colors[i])
-#         if define_normals:
-#             obj.append(NORMAL)
-#             obj.extend(normal)
-#         obj.append(VERTEX)
-#         obj.extend(coords[i])
-
-#         obj.append(COLOR)
-#         obj.extend(colors[i+1])
-#         if define_normals:
-#             obj.append(NORMAL)
-#             obj.extend(normal)
-#         obj.append(VERTEX)
-#         obj.extend(coords[i+1])
-
-#         obj.append(COLOR)
-#         obj.extend(colors[i+2])
-#         if define_normals:
-#             obj.append(NORMAL)
-#             obj.extend(normal)
-#         obj.append(VERTEX)
-#         obj.extend(coords[i+2])
-#     obj.append(END)
-
-#     return obj
 
 def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_atom_masses: List[float], connectivity: np.ndarray) -> List[int]:
     import itertools as it
@@ -295,7 +288,7 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
 
     return [a for a in _calculate_alf(iatom)]
 
-def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0, define_normals=False):
+def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0, transparency=0.0, mesh_type="triangles"):
     '''
 DESCRIPTION
 
@@ -305,8 +298,6 @@ USAGE
 
     spherical_harmonics selected_atoms, molobj, r, m, l, n_points [, cmap [, ax ]]
     '''
-    if (int(n_points)%3 != 0):
-        raise ValueError("Number of points for the meshgrid needs to be a multiple of 3")
     if ax:
         showaxes()
     #Automated search of the ALF
@@ -321,19 +312,32 @@ USAGE
     selected_atoms_index = [ a[1] - 1 for a in cmd.index(selected_atoms)]
     selected_atoms_coords = [coord for coord in cmd.get_model(selected_atoms).get_coord_list()]
     v = cmd.get_view()
+
+    mesh_type = mesh_type.lower()
+    if mesh_type in ["triangles", "tris", "t"]:
+        mesh_type = MeshType.Triangles
+    elif mesh_type in ["points", "pts", "p"]:
+        mesh_type = MeshType.Points
+    elif mesh_type in ["lines", "lns", "l"]:
+        mesh_type = MeshType.Lines
+    else:
+        raise ValueError(f"Unknown Mesh Type: {mesh_type}")
+
     for selected_atom_index in selected_atoms_index:
         alf = calculate_alf_cahn_ingold_prelog(selected_atom_index, obj_coords, obj_atom_masses, connectivity)
 
         local_frame = [obj_coords[i] for i in alf]
 
         OBJECT_coords, OBJECT_colors = spherical_harmonics(local_frame, float(r),int(m),int(l),
-                                                    int(n_points), colormap = cmap)
-        object = create_obj(OBJECT_coords,OBJECT_colors, define_normals)
+                                                    int(n_points), colormap=cmap, mesh_type=mesh_type)
+        object = create_obj(OBJECT_coords,OBJECT_colors, mesh_type=mesh_type)
         name = f'atom{selected_atom_index+1}sph_{m}_{l}'
         
         cmd.load_cgo(object, name)
         ref_atom = selected_atoms_coords[selected_atoms_index.index(selected_atom_index)]
         cmd.translate(object=name, vector = ref_atom, camera=0)
+    cmd.set('two_sided_lighting', 'on')
+    cmd.set('cgo_transparency', transparency, name)
     cmd.set_view(v)
    
     
