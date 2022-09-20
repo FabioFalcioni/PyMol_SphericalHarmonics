@@ -336,8 +336,8 @@ USAGE
         cmd.load_cgo(object, name)
         ref_atom = selected_atoms_coords[selected_atoms_index.index(selected_atom_index)]
         cmd.translate(object=name, vector = ref_atom, camera=0)
+        cmd.set('cgo_transparency', transparency, name)
     cmd.set('two_sided_lighting', 'on')
-    cmd.set('cgo_transparency', transparency, name)
     cmd.set_view(v)
    
     
