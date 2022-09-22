@@ -26,9 +26,10 @@ A typical PyMol session to run the spherical harmonics plugin will look like thi
 6. **n_points** : number of points for the meshgrid.
 7. **cmap** (=*viridis* by default): any colormap from the matplotlib package. Examples can be found [here](https://matplotlib.org/stable/gallery/color/colormap_reference.html).
 8. **ax** (=0 by default): shows global cartesian axes.
+9. **transparency** : sets the transparency of the chosen spherical harmonics function.
+10. **mesh_type** (='triangles' by default) : sets the type of mesh for the CGO object. Options are t = triangles, p = points, l = lines.
 
 # To do
-- Add triangular meshgrid for the CGO object.
 - Add a QTWidget in PyMol GUI
 
 # License
