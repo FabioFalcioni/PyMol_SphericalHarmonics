@@ -288,7 +288,7 @@ def calculate_alf_cahn_ingold_prelog(iatom: int, obj_coords: np.ndarray, obj_ato
 
     return [a for a in _calculate_alf(iatom)]
 
-def wrapper(selected_atoms, molobj, r, m, l, n_points,cmap = 'viridis', ax=0, transparency=0.0, mesh_type="triangles"):
+def wrapper(selected_atoms='all', molobj='all', r=1.0, m=0, l=0, n_points=100,cmap = 'viridis', ax=0, transparency=0.0, mesh_type="triangles"):
     '''
 DESCRIPTION
 
@@ -296,7 +296,7 @@ DESCRIPTION
 
 USAGE
 
-    spherical_harmonics selected_atoms, molobj, r, m, l, n_points [, cmap [, ax ]]
+    spherical_harmonics [selected_atoms[, molobj [, r [, m [, l [, n_points [, cmap [, ax [,transparency [,mesh_type ]]
     '''
     if ax:
         showaxes()
