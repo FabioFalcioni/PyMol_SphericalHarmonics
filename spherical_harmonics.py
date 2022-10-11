@@ -128,8 +128,8 @@ def spherical_harmonics(local_frame: List[int], r: float, m: int, l: int, n_poin
         phi = theta_phi[:,1]
 
     # Calculate the Cartesian coordinates of each point in the mesh.
-    xyz = np.array([ r * np.sin(theta) * np.sin(phi),
-                     r * np.sin(theta) * np.cos(phi),
+    xyz = np.array([ r * np.sin(theta) * np.cos(phi),
+                     r * np.sin(theta) * np.sin(phi),
                      r * np.cos(theta)])
 
     Y = sph_harm(abs(m), l, phi, theta)
