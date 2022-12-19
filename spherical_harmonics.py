@@ -118,7 +118,6 @@ def spherical_harmonics(local_frame: List[int], r: float, m: int, l: int, n_poin
             tri_theta_phi = theta_phi[tri.simplices]
         elif mesh_type is MeshType.Lines:
             edges = delaunay2edges(tri)
-            print(edges)
             tri_theta_phi = theta_phi[edges]
         tri_theta_phi.shape = ((tri_theta_phi.shape[0]*tri_theta_phi.shape[1],2))
         theta = tri_theta_phi[:,0]
@@ -301,16 +300,18 @@ USAGE
     if ax:
         showaxes()
     #Automated search of the ALF
-    bonds = [bond.index for bond in cmd.get_model(molobj).bond]
-    natoms = cmd.get_model(molobj).nAtom
+    current_state = cmd.get_state()
+    main_obj = cmd.get_model(molobj, state=current_state)
+    bonds = [bond.index for bond in main_obj.bond]
+    natoms = main_obj.nAtom
     connectivity = np.zeros((natoms, natoms))
     for (iatom, jatom) in bonds:
         connectivity[iatom, jatom] = 1
         connectivity[jatom, iatom] = 1
-    obj_coords = cmd.get_model(molobj).get_coord_list()
-    obj_atom_masses = [atom.get_mass() for atom in cmd.get_model(molobj).atom]
+    obj_coords = main_obj.get_coord_list()
+    obj_atom_masses = [atom.get_mass() for atom in main_obj.atom]
     selected_atoms_index = [ a[1] - 1 for a in cmd.index(selected_atoms)]
-    selected_atoms_coords = [coord for coord in cmd.get_model(selected_atoms).get_coord_list()]
+    selected_atoms_coords = [coord for coord in cmd.get_model(selected_atoms,state=current_state).get_coord_list()]
     v = cmd.get_view()
 
     mesh_type = mesh_type.lower()
