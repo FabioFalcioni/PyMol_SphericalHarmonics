@@ -334,6 +334,7 @@ USAGE
         name = f'atom{selected_atom_index+1}sph_{m}_{l}'
         
         cmd.load_cgo(object, name)
+        cmd.group(molobj + f"_sph_{m}_{l}", name, "add")
         ref_atom = selected_atoms_coords[selected_atoms_index.index(selected_atom_index)]
         cmd.translate(object=name, vector = ref_atom, camera=0)
         cmd.set('cgo_transparency', transparency, name)
