@@ -35,3 +35,5 @@ A typical PyMol session to run the spherical harmonics plugin will look like thi
 # License
 The MIT License makes this plugin available for everyone. You are more than welcome to help with the development of this repository.
 Please cite this github page if you use the plugin for your studies/research.
+A DOI is also available for citation at:
+[![DOI](https://zenodo.org/badge/523040843.svg)](https://zenodo.org/badge/latestdoi/523040843)
