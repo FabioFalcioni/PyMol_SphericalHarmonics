@@ -1,0 +1,4 @@
+matplotlib==3.5.2
+numpy==1.23.1
+pymol==2.6.0a0
+scipy==1.8.1
